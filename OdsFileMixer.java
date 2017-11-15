@@ -3,6 +3,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Vector;
 import java.util.regex.Pattern;
 import org.jopendocument.dom.spreadsheet.Sheet;
 import org.jopendocument.dom.spreadsheet.SpreadSheet;
@@ -35,6 +36,8 @@ public class OdsFileMixer {
 
 	private static final int MAX_ROWS_IN_QCM = 1000;
 
+	private static final int MAX_COL_IN_QCM = 3;
+
 	//Liste des rÃ©ponses de la question en cours de lecture
 	private static ArrayList<Object> reponses_input;
 
@@ -50,6 +53,15 @@ public class OdsFileMixer {
 	//Nombre de copies diffÃ©rentes du QCM que l'on veut produire
 	private static int nb_copies = 4;
 
+	//Boolean qui indique si on se trouve dans la colonne 0 et non pas dans la 2
+	private static int actualCol = 0;
+	
+	
+	//TODO J'ajoute ces variables
+	private static Vector<Integer> cpt_ligne_list = new Vector<>(5); // compteur de lignes du fichier ods 
+	
+	private static Vector<Integer> questionList = new Vector<>(MAX_ROWS_IN_QCM/4);
+	
 	/**
 	 * <b> Fonction principale qui va lire, mÃ©langer et produire les diffÃ©rentes versions du QCM </b>
 	 *
@@ -60,11 +72,12 @@ public class OdsFileMixer {
 	 */
 	public static void readFile(File file, String outputDirPath) throws IOException, BadFormatException {
 		reponses_input = new ArrayList<Object>();
-
 		indice = 0;
+		initCptLigne(MAX_COL_IN_QCM);
+		setInQuestion(false);
 
-		inQuestion = false;
-
+		setCol(0);
+		
 		Sheet sheet;
 
 		// On charge le fichier, et on prend la premiÃ¨re feuille de calcul
@@ -79,34 +92,36 @@ public class OdsFileMixer {
 		// on crÃ©e 4 copies (par dÃ©faut)
 		sheets = genereSheets(file, nb_copies);
 
-		int cpt_ligne = 0; // compteur de lignes du fichier ods
-
+		
 		//nombre de ligne de la feuille de calcul
 		int rowCount  = sheet.getRowCount();
 
 		//Tant qu'on a pas tout parcouru le fichier
-		while(cpt_ligne < rowCount && cpt_ligne < MAX_ROWS_IN_QCM){
+		for(int i = 0; i < MAX_COL_IN_QCM; i++){
+			while(ligne_actuelle() < rowCount && ligne_actuelle() < MAX_ROWS_IN_QCM){
 
-			// on lit la valeur de la cellule Ã  la colonne 0 et Ã  la ligne cpt_ligne
-			String cell_text = sheet.getCellAt(0, cpt_ligne).getTextValue();
+				// on lit la valeur de la cellule Ã  la colonne 0 et Ã  la ligne cpt_ligne
+				String cell_text = sheet.getCellAt(actualCol, ligne_actuelle()).getTextValue();
 
-			// si on trouve un numero de question
-			checkQuestion(cell_text, indice, inQuestion);
+				// si on trouve un numero de question
+				checkQuestion(cell_text, indice, inQuestion);
 
-			// si on trouve une lettre de rÃ©ponse
-			checkReponse(sheet, cell_text, reponses_input, cpt_ligne, inQuestion);
+				// si on trouve une lettre de rÃ©ponse
+				checkReponse(sheet, cell_text, reponses_input, ligne_actuelle(), inQuestion);
 
-			// si on trouve une cellule vide
-			try {
-				checkEmpty(cell_text, reponses_input, cpt_ligne, inQuestion);
+				// si on trouve une cellule vide
+				try {
+					checkEmpty(cell_text, reponses_input, ligne_actuelle(), inQuestion);
+				}
+				catch (IllegalArgumentException e) {
+					throw new BadFormatException("Le nombre de rÃ©ponses possibles Ã  cette question est insuffisante : ligne ~ " + ligne_actuelle());
+				}
+
+				// increment
+				incrementCpt_ligne();
+
 			}
-			catch (IllegalArgumentException e) {
-				throw new BadFormatException("Le nombre de rÃ©ponses possibles Ã  cette question est insuffisante : ligne ~ " + cpt_ligne);
-			}
-
-			// increment
-			cpt_ligne++;
-
+			actualCol+= 2;
 		}
 
 		/*
@@ -128,12 +143,17 @@ public class OdsFileMixer {
 	public static void checkQuestion(String cell_text, int indice, boolean inQuestion){
 		//si c'est un numÃ©ro de question et que l'on est pas dÃ©jÃ  dans une question
 		if(Helper.isNumeric(cell_text) && !inQuestion){
-			//si le numÃ©ro est consÃ©cutif Ã  celui de la question prÃ©cÃ©dente
-			if(Integer.parseInt(cell_text)== indice + 1){
+			//TODO le msg suivant est faux, actuellement on ajoute le numéro de la question à une liste//si le numÃ©ro est consÃ©cutif Ã  celui de la question prÃ©cÃ©dente
+			//System.out.println("Try question");
+			if(questionList.get(Integer.parseInt(cell_text)) != Integer.parseInt(cell_text)){
+				System.out.println("Reussite");
 				//on notifie que l'on a trouvÃ© une question
+				questionList.add(Integer.parseInt(cell_text), Integer.parseInt(cell_text));
 				setInQuestion(true);
 				incIndice();
 			}
+			//System.out.println("Question tryed");
+			//TODO Verifier cette partie
 		}
 	}
 
@@ -161,12 +181,14 @@ public class OdsFileMixer {
 	 * @param cpt_ligne : ligne de la feuille de calcul
 	 * @param inQuestion
 	 */
+	
 	private static void checkEmpty(String cell_text, ArrayList<Object> reponses_input,int cpt_ligne, boolean inQuestion){
 		//une cellule vide indique que l'on passe Ã  une question diffÃ©rente
 		if(cell_text == "" && inQuestion){
 			//on gÃ©nÃ¨re nb_copie de QCMs
+			//TODO MODIFIER LA GENERATION POUR QU'ELLE PUISSE SE FAIRE SUR DEUX COLONNES
 			ArrayList<ArrayList<Object>> reponses_output = genereMix(reponses_input,nb_copies);
-
+			
 			//on Ã©crit le rÃ©sultat du mixer dans les nb_copies versions du QCMs
 			write(reponses_output,cpt_ligne);
 
@@ -205,7 +227,7 @@ public class OdsFileMixer {
 				Sheet sheet = sheets.get(i);
 				ArrayList<Object> reponses = resultat.get(i);
 				for (int j=0;j<reponses.size();j++){
-					sheet.getCellAt(1,cpt_ligne-reponses.size()+j).setValue(reponses.get(j));
+					sheet.getCellAt(actualCol+1,cpt_ligne-reponses.size()+j).setValue(reponses.get(j));
 				}
 			}
 		}
@@ -301,7 +323,79 @@ public class OdsFileMixer {
 	private static void setInQuestion(boolean b){
 		inQuestion = b;
 	}
-
+	//TODO J'ajoute ces fonctions
+	private static void setCol(int b){
+		actualCol = b;
+	}
+	private static void initCptLigne(int a){
+		for(int i =0;i < a; i++)
+			cpt_ligne_list.add(0);
+	}
+	private static void incrementCpt_ligne(){
+		int a = cpt_ligne_list.remove(actualCol);
+		cpt_ligne_list.add(actualCol, a++);
+	}
+	private static int ligne_actuelle(){
+		return cpt_ligne_list.get(actualCol);	
+	}
+	private static void addCaseToVerifieQuestionIndice(){
+		
+		
+	}
+	private static void verifieLettreSurLigne(boolean question, String cell1, String cell3, String cell5, int ligne) throws BadFormatException{
+		if(! question){
+			verifieLettre(cell1, ligne, 0);
+			verifieLettre(cell3, ligne, 2);
+			verifieLettre(cell5, ligne, 4);
+		}
+	}
+	private static void verifieLettre(String cell,int ligne, int col) throws BadFormatException{
+		if (Pattern.matches("[a-zA-Z]", cell)) {
+			String text = "Une lettre a été trouvée au mauvais endroit:\n "
+					+ "ligne: " + Integer.toString(ligne + 1) + " - colonne: "+ col + " -> \"" + cell + "\"";
+			throw new BadFormatException(text);
+		}
+	}
+	
+	private static void verifieNombreSurLigne(boolean question, String cell1, String cell3, String cell5, int ligne, Sheet sheet) throws BadFormatException{
+		if(question){
+			verifieNombre(cell1, ligne, 0, sheet);
+			verifieNombre(cell3, ligne, 2, sheet);
+			verifieNombre(cell5, ligne, 4, sheet);
+			
+		}
+		
+	}
+	private static void verifieNombre(String cell, int ligne, int col, Sheet sheet) throws BadFormatException{
+		boolean isRedactionPart = ((sheet.getCellAt(col, ligne + 1).getTextValue().equals("" + (Integer.parseInt(cell)  + 1))) || sheet.getCellAt(col, ligne + 1).getTextValue().equals(""));
+		if (! isRedactionPart) {
+			String text = "Un chiffre a été trouvé au mauvais endroit:\n "
+					+ "ligne: " + Integer.toString(ligne + 1) + " - colonne: 1" + " -> \"" + cell + "\"";
+			throw new BadFormatException(text);
+		}
+		else
+			questionList.add(Integer.parseInt(cell));
+	}
+	private static void verifieListQuestion() throws BadFormatException{
+		int indice = 1;
+		boolean done = false;
+		while(!questionList.isEmpty()){
+			for(int i = 0; i < questionList.size(); i++){
+				if(questionList.get(i) == indice){
+					indice++;
+					done = true;
+					questionList.remove(i);
+					break;
+				}
+			}
+			if(!done){
+				throw new BadFormatException("La question numéro "+indice+" n'est pas renseignée");
+			}
+			
+		}
+	}
+	
+	
 	/**
 	 * <b> RecrÃ©e une nouvelle liste pour la question suivante </b>
 	 */
@@ -322,7 +416,7 @@ public class OdsFileMixer {
 	 */
 	public static void checkSourceSheetFormat(Sheet sheet) throws BadFormatException {
 		int cpt_ligne = 0; // compteur de lignes du fichier ods
-		int indice_question = 0;
+		//int indice_question = 0;
 		boolean question = false; // boolean qui vÃ©rifie si on est en cours de question
 
 		String text = "Le fichier contient une cellule inattendue:\n";
@@ -333,59 +427,55 @@ public class OdsFileMixer {
 		//Tant qu'on a pas tout parcouru le fichier
 		while(cpt_ligne < rowCount && cpt_ligne < MAX_ROWS_IN_QCM){
 			String cell_text1 = sheet.getCellAt(0, cpt_ligne).getTextValue();
-			String cell_text4 = sheet.getCellAt(3, cpt_ligne).getTextValue();
+			String cell_text3 = sheet.getCellAt(2, cpt_ligne).getTextValue();
 			String cell_text5 = sheet.getCellAt(4, cpt_ligne).getTextValue();
-			/*
+		//	String cell_text6 = sheet.getCellAt(5, cpt_ligne).getTextValue();
+		//	String cell_text7 = sheet.getCellAt(6, cpt_ligne).getTextValue();
+			/**
 			 *TODO 
 			 * Problematique avec la méthode de QCM sur plusieurs collones, necessitée de relancer sur les collones 4 et 5 ce qui est lancé sur les colonnes 1 et 2
 			 * 
-			 * @Author Yshenor
+			 * @author Yshenor
 			 */
 			/*
-			// les cellules des colonnes 3, 4 et 5 sont testÃ©es pour qu'elles n'aient aucun contenu
-			if (! cell_text4.equals("") || ! cell_text5.equals("")) {
+			//les cellules des colonnes 5, 6 et 7 sont testÃ©es pour qu'elles n'aient aucun contenu
+			if (! cell_text6.equals("") || ! cell_text7.equals("")) {
 				text += "Cellule interdite:\n";
-				if (! cell_text4.equals("")) {
-					text += "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 4" + " -> \"" + cell_text4 + "\"";
+				if (! cell_text6.equals("")) {
+					text += "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 6" + " -> \"" + cell_text6 + "\"";
 				}
-				else if (! cell_text5.equals("")) {
-					text += "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 5" + " -> \"" + cell_text5 + "\"";
+				else if (! cell_text7.equals("")) {
+					text += "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 7" + " -> \"" + cell_text7 + "\"";
 				}
 				throw new BadFormatException(text);
-			}
-			*/
+			}*/
+			
 			// on vÃ©rifie qu'il y a bien un espace entre chaque question/reponse et que les questions sont bien prÃ©cÃ©dÃ©es d'un chiffre
 			if (Pattern.matches("\\d+", cell_text1)) {
-				boolean isRedactionPart = ((sheet.getCellAt(0, cpt_ligne + 1).getTextValue().equals("" + (Integer.parseInt(cell_text1)  + 1))) || sheet.getCellAt(0, cpt_ligne + 1).getTextValue().equals(""));
-				if (question && ! isRedactionPart) {
-					text += "Un chiffre a Ã©tÃ© trouvÃ© au mauvais endroit:\n "
-							+ "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 1" + " -> \"" + cell_text1 + "\"";
-					throw new BadFormatException(text);
-				}
-				else if (! question && (Integer.parseInt(cell_text1) != indice_question + 1) && ! isRedactionPart)
+				
+				verifieNombreSurLigne(question, cell_text1, cell_text3, cell_text5, cpt_ligne, sheet);
+				/*else if (! question && (Integer.parseInt(cell_text1) != indice_question + 1) && ! isRedactionPart)
 				{
 					text += "Le chiffre de cette question n'est pas bon:\n "
 							+ "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 1" + " -> \"" + cell_text1 + "\"";
 					throw new BadFormatException(text);
-				}
+				}*/
 				question = true;
-				indice_question += 1;
+				//indice_question += 1;
 			}
 			// on vÃ©rifie qu'une rÃ©ponse a bien lieu apres les questions et que les rÃ©ponses sont bien prÃ©cÃ©dÃ©es d'une lettre
 			else if (Pattern.matches("[a-zA-Z]", cell_text1)) {
-				if (! question) {
-					text += "Une lettre a Ã©tÃ© trouvÃ©e au mauvais endroit:\n "
-							+ "ligne: " + Integer.toString(cpt_ligne + 1) + " - colonne: 1" + " -> \"" + cell_text1 + "\"";
-					throw new BadFormatException(text);
-				}
+				verifieLettreSurLigne(question, cell_text1, cell_text3, cell_text5, cpt_ligne);
 			}
-			else if (cell_text1.equals("")) {
+			else if (cell_text1.equals("")&&cell_text3.equals("")&&cell_text5.equals("")) {
 				question = false;
 			}
 
 			//increment
 			cpt_ligne++;
+			
 		}
+		verifieListQuestion();
 	}
 
 }

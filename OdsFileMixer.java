@@ -58,7 +58,9 @@ public class OdsFileMixer {
 	
 	
 	//TODO J'ajoute ces variables
-	private static Vector<Integer> cpt_ligne_list = new Vector<>(5); // compteur de lignes du fichier ods 
+	private static int ligne_Col1 = 0; // compteur de lignes du fichier ods 
+	private static int ligne_Col2 = 0; // compteur de lignes du fichier ods 
+	private static int ligne_Col3 = 0; // compteur de lignes du fichier ods 
 	
 	private static Vector<Integer> questionList = new Vector<>(MAX_ROWS_IN_QCM/4);
 	
@@ -71,9 +73,8 @@ public class OdsFileMixer {
 	 * @throws BadFormatException
 	 */
 	public static void readFile(File file, String outputDirPath) throws IOException, BadFormatException {
-		reponses_input = new ArrayList<Object>();
+		reset_reponses_input();
 		indice = 0;
-		initCptLigne(MAX_COL_IN_QCM);
 		setInQuestion(false);
 
 		setCol(0);
@@ -97,18 +98,22 @@ public class OdsFileMixer {
 		int rowCount  = sheet.getRowCount();
 
 		//Tant qu'on a pas tout parcouru le fichier
+		System.out.println("avant lecture");
 		for(int i = 0; i < MAX_COL_IN_QCM; i++){
+			reponses_input = new ArrayList<Object>();
+			System.out.println("Lecture col "+i);
 			while(ligne_actuelle() < rowCount && ligne_actuelle() < MAX_ROWS_IN_QCM){
-
+					System.out.println("Jalon1");
+					System.out.println(actualCol +"  "+ligne_actuelle());
 				// on lit la valeur de la cellule Ã  la colonne 0 et Ã  la ligne cpt_ligne
 				String cell_text = sheet.getCellAt(actualCol, ligne_actuelle()).getTextValue();
-
+					System.out.println(cell_text);
 				// si on trouve un numero de question
 				checkQuestion(cell_text, indice, inQuestion);
-
+					System.out.println("Jalon2");
 				// si on trouve une lettre de rÃ©ponse
 				checkReponse(sheet, cell_text, reponses_input, ligne_actuelle(), inQuestion);
-
+					System.out.println("Jalon3");
 				// si on trouve une cellule vide
 				try {
 					checkEmpty(cell_text, reponses_input, ligne_actuelle(), inQuestion);
@@ -119,15 +124,18 @@ public class OdsFileMixer {
 
 				// increment
 				incrementCpt_ligne();
+				System.out.println(ligne_actuelle());
 
 			}
 			actualCol+= 2;
+			ligne_actuelle();
 		}
 
 		/*
 		 * CrÃ©e un nouveau fichier et sauvegarde les changements Ã  faire aprÃ¨s
 		 * avoir mÃ©langÃ© les questions
 		 */
+		System.out.println("Sauvegarde");
 		saveSheets(sheets, nb_copies, outputDirPath,
 				file.getAbsolutePath().substring(file.getAbsolutePath().lastIndexOf(File.separator) + 1));
 
@@ -143,22 +151,17 @@ public class OdsFileMixer {
 	public static void checkQuestion(String cell_text, int indice, boolean inQuestion){
 		//si c'est un numÃ©ro de question et que l'on est pas dÃ©jÃ  dans une question
 		if(Helper.isNumeric(cell_text) && !inQuestion){
-			//TODO le msg suivant est faux, actuellement on ajoute le numéro de la question à une liste//si le numÃ©ro est consÃ©cutif Ã  celui de la question prÃ©cÃ©dente
-			//System.out.println("Try question");
-			if(questionList.get(Integer.parseInt(cell_text)) != Integer.parseInt(cell_text)){
-				System.out.println("Reussite");
-				//on notifie que l'on a trouvÃ© une question
-				questionList.add(Integer.parseInt(cell_text), Integer.parseInt(cell_text));
-				setInQuestion(true);
-				incIndice();
-			}
+			//DONE//System.out.println("Try question");
+			//on notifie que l'on a trouvÃ© une question
+			setInQuestion(true);
+			incIndice();
 			//System.out.println("Question tryed");
 			//TODO Verifier cette partie
 		}
 	}
 
 	/**
-	 * Fonction qui gÃ¨re la lecture d'une cellule rÃ©ponse (lettre)
+	 * Fonction qui gère la lecture d'une cellule rÃ©ponse (lettre)
 	 * @param sheet
 	 * @param cell_text
 	 * @param reponses_input
@@ -169,7 +172,7 @@ public class OdsFileMixer {
 		//si c'est une lettre de rÃ©ponse et que l'on est dÃ©jÃ  dans une question
 		if(Helper.isLetter(cell_text) && inQuestion){
 			//on ajoute Ã  la liste des rÃ©ponses de la question
-			reponses_input.add(sheet.getCellAt(1,cpt_ligne));
+			reponses_input.add(sheet.getCellAt(actualCol+1,cpt_ligne));
 
 		}
 	}
@@ -327,20 +330,29 @@ public class OdsFileMixer {
 	private static void setCol(int b){
 		actualCol = b;
 	}
-	private static void initCptLigne(int a){
-		for(int i =0;i < a; i++)
-			cpt_ligne_list.add(0);
-	}
+	
 	private static void incrementCpt_ligne(){
-		int a = cpt_ligne_list.remove(actualCol);
-		cpt_ligne_list.add(actualCol, a++);
+		if(actualCol == 0)
+			ligne_Col1++;
+		else if( actualCol == 2)
+			ligne_Col2++;
+		else
+			ligne_Col3++;
 	}
 	private static int ligne_actuelle(){
-		return cpt_ligne_list.get(actualCol);	
+	if(actualCol == 0)
+		return ligne_Col1;
+	else if( actualCol == 2)
+		return ligne_Col2;
+	else
+		return ligne_Col3;
 	}
-	private static void addCaseToVerifieQuestionIndice(){
-		
-		
+	private static void addCaseToVerifieQuestionIndice(String s1, String s2, String s3){
+		questionList.add(Integer.parseInt(s1));
+		if(!s2.equals(""))
+			questionList.add(Integer.parseInt(s2));
+		if(!s3.equals(""))
+			questionList.add(Integer.parseInt(s3));
 	}
 	private static void verifieLettreSurLigne(boolean question, String cell1, String cell3, String cell5, int ligne) throws BadFormatException{
 		if(! question){
@@ -348,6 +360,7 @@ public class OdsFileMixer {
 			verifieLettre(cell3, ligne, 2);
 			verifieLettre(cell5, ligne, 4);
 		}
+
 	}
 	private static void verifieLettre(String cell,int ligne, int col) throws BadFormatException{
 		if (Pattern.matches("[a-zA-Z]", cell)) {
@@ -364,6 +377,8 @@ public class OdsFileMixer {
 			verifieNombre(cell5, ligne, 4, sheet);
 			
 		}
+		else
+			addCaseToVerifieQuestionIndice(cell1, cell3, cell5);
 		
 	}
 	private static void verifieNombre(String cell, int ligne, int col, Sheet sheet) throws BadFormatException{
@@ -373,15 +388,16 @@ public class OdsFileMixer {
 					+ "ligne: " + Integer.toString(ligne + 1) + " - colonne: 1" + " -> \"" + cell + "\"";
 			throw new BadFormatException(text);
 		}
-		else
-			questionList.add(Integer.parseInt(cell));
 	}
 	private static void verifieListQuestion() throws BadFormatException{
 		int indice = 1;
 		boolean done = false;
 		while(!questionList.isEmpty()){
+			//System.out.println(questionList);
 			for(int i = 0; i < questionList.size(); i++){
 				if(questionList.get(i) == indice){
+				//	System.out.println("removed "+indice);
+					
 					indice++;
 					done = true;
 					questionList.remove(i);
@@ -391,7 +407,7 @@ public class OdsFileMixer {
 			if(!done){
 				throw new BadFormatException("La question numéro "+indice+" n'est pas renseignée");
 			}
-			
+			done = false;
 		}
 	}
 	
@@ -475,6 +491,7 @@ public class OdsFileMixer {
 			cpt_ligne++;
 			
 		}
+		
 		verifieListQuestion();
 	}
 

@@ -20,14 +20,14 @@ import org.qcmix.tools.Helper;
  * La classe se divise en 3 parties :
  * <ul>
  * <li> Ouvrir le fichier .ODS </li>
- * <li> Lire le fichier .ODS pour recenser les rÃ©ponses de chaque questions du QCM. </li>
- * <li> Pour chaque question lue on va mÃ©langer les rÃ©ponses associÃ©es et produire plusieurs versions diffÃ©rentes. </li>
- * <li> On Ã©crit au fur et Ã  mesure dans les diffÃ©rentes versions pour ne pas avoir Ã  reparcourir le fichier une seconde fois pour l'Ã©criture. </li>
- * <li> AprÃ¨s avoir lu toutes les questions du QCM, on sauvegarde les diffÃ©rentes versions produites par le mÃ©lange. </li>
+ * <li> Lire le fichier .ODS pour recenser les réponses de chaque questions du QCM. </li>
+ * <li> Pour chaque question lue on va mélanger les réponses associées et produire plusieurs versions différentes. </li>
+ * <li> On écrit au fur et Ã  mesure dans les différentes versions pour ne pas avoir Ã  reparcourir le fichier une seconde fois pour l'écriture. </li>
+ * <li> AprÃ¨s avoir lu toutes les questions du QCM, on sauvegarde les différentes versions produites par le mélange. </li>
  * </ul>
  *
  * <p>
- * Pour paramÃ©trer le nombre de versions du QCM que l'on produit, il faut modifier la variable static nb_copies.
+ * Pour paramétrer le nombre de versions du QCM que l'on produit, il faut modifier la variable static nb_copies.
  * </p>
  *
  * @author Simon et Dioulde
@@ -38,7 +38,7 @@ public class OdsFileMixer {
 
 	private static final int MAX_COL_IN_QCM = 3;
 
-	//Liste des rÃ©ponses de la question en cours de lecture
+	//Liste des réponses de la question en cours de lecture
 	private static ArrayList<Object> reponses_input;
 
 	//Liste des versions du QCM que l'on produit
@@ -50,7 +50,7 @@ public class OdsFileMixer {
 	//Boolean qui indique si l'on se trouve dans une question
 	private static boolean inQuestion;
 
-	//Nombre de copies diffÃ©rentes du QCM que l'on veut produire
+	//Nombre de copies différentes du QCM que l'on veut produire
 	private static int nb_copies = 4;
 
 	//Boolean qui indique si on se trouve dans la colonne 0 et non pas dans la 2
@@ -65,7 +65,7 @@ public class OdsFileMixer {
 	private static Vector<Integer> questionList = new Vector<>(MAX_ROWS_IN_QCM/4);
 	
 	/**
-	 * <b> Fonction principale qui va lire, mÃ©langer et produire les diffÃ©rentes versions du QCM </b>
+	 * <b> Fonction principale qui va lire, mélanger et produire les différentes versions du QCM </b>
 	 *
 	 * @param file : Fichier qui contient le QCM au format .ODS
 	 * @param outputDirPath : Chemin du dossier de destination des QCMs
@@ -87,10 +87,10 @@ public class OdsFileMixer {
 			checkSourceSheetFormat(sheet);
 		}
 		catch (NullPointerException | ClassCastException e) {
-			throw new NullPointerException("Le fichier demandÃ© n'est pas une feuille de calcul!\n\n" + Helper.getStackTrace(e));
+			throw new NullPointerException("Le fichier demandé n'est pas une feuille de calcul!\n\n" + Helper.getStackTrace(e));
 		}
 
-		// on crÃ©e 4 copies (par dÃ©faut)
+		// on crée 4 copies (par défaut)
 		sheets = genereSheets(file, nb_copies);
 
 		
@@ -98,42 +98,34 @@ public class OdsFileMixer {
 		int rowCount  = sheet.getRowCount();
 
 		//Tant qu'on a pas tout parcouru le fichier
-		System.out.println("avant lecture");
 		for(int i = 0; i < MAX_COL_IN_QCM; i++){
 			reponses_input = new ArrayList<Object>();
-			System.out.println("Lecture col "+i);
 			while(ligne_actuelle() < rowCount && ligne_actuelle() < MAX_ROWS_IN_QCM){
-					System.out.println("Jalon1");
-					System.out.println(actualCol +"  "+ligne_actuelle());
-				// on lit la valeur de la cellule Ã  la colonne 0 et Ã  la ligne cpt_ligne
+				// on lit la valeur de la cellule à la colonne et ligne actuelle et à  la ligne actuelle
 				String cell_text = sheet.getCellAt(actualCol, ligne_actuelle()).getTextValue();
 					System.out.println(cell_text);
 				// si on trouve un numero de question
 				checkQuestion(cell_text, indice, inQuestion);
-					System.out.println("Jalon2");
-				// si on trouve une lettre de rÃ©ponse
+				// si on trouve une lettre de réponse
 				checkReponse(sheet, cell_text, reponses_input, ligne_actuelle(), inQuestion);
-					System.out.println("Jalon3");
 				// si on trouve une cellule vide
 				try {
 					checkEmpty(cell_text, reponses_input, ligne_actuelle(), inQuestion);
 				}
 				catch (IllegalArgumentException e) {
-					throw new BadFormatException("Le nombre de rÃ©ponses possibles Ã  cette question est insuffisante : ligne ~ " + ligne_actuelle());
+					throw new BadFormatException("Le nombre de réponses possibles Ã  cette question est insuffisante : ligne ~ " + ligne_actuelle());
 				}
 
-				// increment
+				// increment ligne
 				incrementCpt_ligne();
-				System.out.println(ligne_actuelle());
-
 			}
+			//increment colonne
 			actualCol+= 2;
-			ligne_actuelle();
 		}
 
 		/*
-		 * CrÃ©e un nouveau fichier et sauvegarde les changements Ã  faire aprÃ¨s
-		 * avoir mÃ©langÃ© les questions
+		 * Crée un nouveau fichier et sauvegarde les changements Ã  faire aprÃ¨s
+		 * avoir mélangé les questions
 		 */
 		System.out.println("Sauvegarde");
 		saveSheets(sheets, nb_copies, outputDirPath,
@@ -149,19 +141,16 @@ public class OdsFileMixer {
 	 * @param inQuestion
 	 */
 	public static void checkQuestion(String cell_text, int indice, boolean inQuestion){
-		//si c'est un numÃ©ro de question et que l'on est pas dÃ©jÃ  dans une question
+		//si c'est un numéro de question et que l'on est pas déjà  dans une question
 		if(Helper.isNumeric(cell_text) && !inQuestion){
-			//DONE//System.out.println("Try question");
-			//on notifie que l'on a trouvÃ© une question
+			//on entre dans une question
 			setInQuestion(true);
 			incIndice();
-			//System.out.println("Question tryed");
-			//TODO Verifier cette partie
 		}
 	}
 
 	/**
-	 * Fonction qui gère la lecture d'une cellule rÃ©ponse (lettre)
+	 * Fonction qui gère la lecture d'une cellule réponse (lettre)
 	 * @param sheet
 	 * @param cell_text
 	 * @param reponses_input
@@ -169,9 +158,9 @@ public class OdsFileMixer {
 	 * @param inQuestion
 	 */
 	public static void checkReponse(Sheet sheet, String cell_text, ArrayList<Object> reponses_input, int cpt_ligne, boolean inQuestion){
-		//si c'est une lettre de rÃ©ponse et que l'on est dÃ©jÃ  dans une question
+		//si c'est une lettre de réponse et que l'on est déjÃ  dans une question
 		if(Helper.isLetter(cell_text) && inQuestion){
-			//on ajoute Ã  la liste des rÃ©ponses de la question
+			//on ajoute à la liste des réponses de la question
 			reponses_input.add(sheet.getCellAt(actualCol+1,cpt_ligne));
 
 		}
@@ -180,22 +169,22 @@ public class OdsFileMixer {
 	/**
 	 * Fonction qui gÃ¨re la lecture d'une cellule vide
 	 * @param cell_text : la cellule qu'on lit
-	 * @param reponses_input : la liste de rÃ©ponses de la question
+	 * @param reponses_input : la liste de réponses de la question
 	 * @param cpt_ligne : ligne de la feuille de calcul
 	 * @param inQuestion
 	 */
 	
 	private static void checkEmpty(String cell_text, ArrayList<Object> reponses_input,int cpt_ligne, boolean inQuestion){
-		//une cellule vide indique que l'on passe Ã  une question diffÃ©rente
+		//une cellule vide indique que l'on passe Ã  une question différente
 		if(cell_text == "" && inQuestion){
-			//on gÃ©nÃ¨re nb_copie de QCMs
+			//on génère nb_copie de QCMs
 			//TODO MODIFIER LA GENERATION POUR QU'ELLE PUISSE SE FAIRE SUR DEUX COLONNES
 			ArrayList<ArrayList<Object>> reponses_output = genereMix(reponses_input,nb_copies);
 			
-			//on Ã©crit le rÃ©sultat du mixer dans les nb_copies versions du QCMs
+			//on écrit le résultat du mixer dans les nb_copies versions du QCMs
 			write(reponses_output,cpt_ligne);
 
-			//on reset la liste des rÃ©ponses pour la question suivante
+			//on reset la liste des réponses pour la question suivante
 			reset_reponses_input();
 
 			setInQuestion(false);
@@ -203,30 +192,30 @@ public class OdsFileMixer {
 	}
 
 	/**
-	 * <b>Fonction qui, Ã  partir d'une liste de rÃ©ponses de QCM (String), va faire nb_version mÃ©langes diffÃ©rents.</b>
+	 * <b>Fonction qui, Ã  partir d'une liste de réponses de QCM (String), va faire nb_version mélanges différents.</b>
 	 * @see Mixer
-	 * @param list : liste des rÃ©ponses d'une question
-	 * @param nb_version : nombre de mÃ©langes de rÃ©ponses que l'on souhaite
-	 * @return ArrayList<ArrayList<Object>> : liste de listes de rÃ©ponses mÃ©langÃ©es
+	 * @param list : liste des réponses d'une question
+	 * @param nb_version : nombre de mélanges de réponses que l'on souhaite
+	 * @return ArrayList<ArrayList<Object>> : liste de listes de réponses mélangées
 	 */
 	private static ArrayList<ArrayList<Object>> genereMix(ArrayList<Object> list,int nb_version){
-		//si la liste de rÃ©ponses n'est pas vide
+		//si la liste de réponses n'est pas vide
 		if(list.size()!=0){
-			//on gÃ©nÃ¨re nb_version mÃ©langes diffÃ©rents
+			//on génÃ¨re nb_version mélanges différents
 			return Mixer.generateSheets(list, nb_version);
 		}
 		return null;
 	}
 
 	/**
-	 * <b> Fonction qui Ã©crit sur les nb_copies versions les diffÃ©rents ordres de rÃ©ponses d'une question. </b>
-	 * @param resultat : Le rÃ©sultat de genereMix()
+	 * <b> Fonction qui écrit sur les nb_copies versions les différents ordres de réponses d'une question. </b>
+	 * @param resultat : Le résultat de genereMix()
 	 * @param cpt_ligne : l'indice de la ligne oÃ¹ l'on se trouve dans la feuille de calcul
 	 */
 	private static void write(ArrayList<ArrayList<Object>> resultat,int cpt_ligne){
 		if(resultat != null){
 			for (int i=0;i<nb_copies;i++){
-				//on Ã©crit sur la i Ã¨me feuille de calcul que l'on a gÃ©nÃ©rÃ©e
+				//on écrit sur la i Ã¨me feuille de calcul que l'on a générée
 				Sheet sheet = sheets.get(i);
 				ArrayList<Object> reponses = resultat.get(i);
 				for (int j=0;j<reponses.size();j++){
@@ -237,9 +226,9 @@ public class OdsFileMixer {
 	}
 
 	/**
-	 * <b> Fonction qui gÃ©nÃ¨re nb_copie de la feuille de calcul originale </b>
+	 * <b> Fonction qui génÃ¨re nb_copie de la feuille de calcul originale </b>
 	 * @param sheet : feuille de calcul originale
-	 * @param nb : nombre de versions que l'on crÃ©e
+	 * @param nb : nombre de versions que l'on crée
 	 * @return ArrayList des nb feuilles de calcul
 	 * @throws IOException
 	 */
@@ -253,9 +242,9 @@ public class OdsFileMixer {
 
 	/**
 	 * <b> Fonction qui sauvegarde les nb_copies feuilles de calcul </b>
-	 * @param sheets : les nb_copies feuilles de calcul que l'on veut gÃ©nerer
+	 * @param sheets : les nb_copies feuilles de calcul que l'on veut génerer
 	 * @param nb : nb_copies
-	 * @param outputDirPath : rÃ©pertoire destination
+	 * @param outputDirPath : répertoire destination
 	 * @param inputName : nom du fichier source
 	 * @throws IOException
 	 * @throws FileNotFoundException
@@ -275,14 +264,14 @@ public class OdsFileMixer {
 			outputDir.mkdir();
 		} catch(SecurityException se) {
 
-			throw new SecurityException("Erreur: impossible de crÃ©er le rÃ©pertoire cible. Permission non accordÃ©e."+se.getMessage()+"\n"+se.getStackTrace());
+			throw new SecurityException("Erreur: impossible de créer le répertoire cible. Permission non accordée."+se.getMessage()+"\n"+se.getStackTrace());
 		}
 	    try{
 	        outputDir.mkdir();
 	    }
 	    catch(SecurityException se){
 
-	    	throw new SecurityException("Erreur: impossible de crÃ©er le rÃ©pertoire cible. Permission non accordÃ©e."+se.getMessage()+"\n"+se.getStackTrace());
+	    	throw new SecurityException("Erreur: impossible de créer le répertoire cible. Permission non accordée."+se.getMessage()+"\n"+se.getStackTrace());
 	    }
 
 	    System.out.println("outputDir " + outputDir.getName() + "created");
@@ -313,7 +302,7 @@ public class OdsFileMixer {
 	}
 
 	/**
-	 * <b> Fonction qui incrÃ©mente la variable statique : l'indice des questions </b>
+	 * <b> Fonction qui incrémente la variable statique : l'indice des questions </b>
 	 */
 	private static void incIndice(){
 		indice++;
@@ -413,19 +402,19 @@ public class OdsFileMixer {
 	
 	
 	/**
-	 * <b> RecrÃ©e une nouvelle liste pour la question suivante </b>
+	 * <b> Recrée une nouvelle liste pour la question suivante </b>
 	 */
 	private static void reset_reponses_input(){
 		reponses_input = new ArrayList<Object>();
 	}
 
 	/**
-	 * VÃ©rifie que le format de la feuille de calcul est correct:
+	 * Vérifie que le format de la feuille de calcul est correct:
 	 * <ul>
 	 * <li>pas de texte sur la troiziÃ¨me colonne</li>
-	 * <li>une ligne vide entre chaque question/rÃ©ponses</li>
-	 * <li>des rÃ©ponses aprÃ¨s chaque questions</li>
-	 * <li>pas de blanc entre les rÃ©ponses</li>
+	 * <li>une ligne vide entre chaque question/réponses</li>
+	 * <li>des réponses aprÃ¨s chaque questions</li>
+	 * <li>pas de blanc entre les réponses</li>
 	 * </ul>
 	 * @param sheet
 	 * @throws BadFormatException
@@ -433,7 +422,7 @@ public class OdsFileMixer {
 	public static void checkSourceSheetFormat(Sheet sheet) throws BadFormatException {
 		int cpt_ligne = 0; // compteur de lignes du fichier ods
 		//int indice_question = 0;
-		boolean question = false; // boolean qui vÃ©rifie si on est en cours de question
+		boolean question = false; // boolean qui vérifie si on est en cours de question
 
 		String text = "Le fichier contient une cellule inattendue:\n";
 
@@ -454,7 +443,7 @@ public class OdsFileMixer {
 			 * @author Yshenor
 			 */
 			/*
-			//les cellules des colonnes 5, 6 et 7 sont testÃ©es pour qu'elles n'aient aucun contenu
+			//les cellules des colonnes 5, 6 et 7 sont testées pour qu'elles n'aient aucun contenu
 			if (! cell_text6.equals("") || ! cell_text7.equals("")) {
 				text += "Cellule interdite:\n";
 				if (! cell_text6.equals("")) {
@@ -466,7 +455,7 @@ public class OdsFileMixer {
 				throw new BadFormatException(text);
 			}*/
 			
-			// on vÃ©rifie qu'il y a bien un espace entre chaque question/reponse et que les questions sont bien prÃ©cÃ©dÃ©es d'un chiffre
+			// on vérifie qu'il y a bien un espace entre chaque question/reponse et que les questions sont bien précédées d'un chiffre
 			if (Pattern.matches("\\d+", cell_text1)) {
 				
 				verifieNombreSurLigne(question, cell_text1, cell_text3, cell_text5, cpt_ligne, sheet);
@@ -479,7 +468,7 @@ public class OdsFileMixer {
 				question = true;
 				//indice_question += 1;
 			}
-			// on vÃ©rifie qu'une rÃ©ponse a bien lieu apres les questions et que les rÃ©ponses sont bien prÃ©cÃ©dÃ©es d'une lettre
+			// on vérifie qu'une réponse a bien lieu apres les questions et que les réponses sont bien précédées d'une lettre
 			else if (Pattern.matches("[a-zA-Z]", cell_text1)) {
 				verifieLettreSurLigne(question, cell_text1, cell_text3, cell_text5, cpt_ligne);
 			}
@@ -489,6 +478,7 @@ public class OdsFileMixer {
 
 			//increment
 			cpt_ligne++;
+			
 			
 		}
 		
